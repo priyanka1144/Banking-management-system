@@ -2,7 +2,6 @@
 
 A secure console-based banking system management application built in C, featuring robust financial operations and audit capabilities.
 
-![CLI Banking System Demo](https://via.placeholder.com/800x400.png?text=CLI+Banking+System+Demo) <!-- Add actual screenshot -->
 
 ## Features ✨
 
