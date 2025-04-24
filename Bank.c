@@ -9,7 +9,7 @@
 #define MAX_AUDIT_LOGS 1000
 
 typedef struct {
-    char type[20]; // "Deposit" or "Withdrawal"
+    char type[20]; 
     float amount;
 } Transaction;
 
@@ -17,8 +17,8 @@ typedef struct {
     unsigned long long accountNumber;
     char name[50];
     char address[100];
-    char nid[20];      // National ID (10 digits)
-    char dob[20];      // Date of Birth (DD-MM-YYYY)
+    char nid[20];      
+    char dob[20];      
     float balance;
     Transaction transactions[MAX_TRANSACTIONS];
     int transactionCount;
@@ -34,9 +34,8 @@ Account accounts[MAX_ACCOUNTS];
 AuditLog auditLogs[MAX_AUDIT_LOGS];
 int accountCount = 0;
 int auditLogCount = 0;
-unsigned long long nextAccountNumber = 10000; // 5-digit starting number
+unsigned long long nextAccountNumber = 10000; 
 
-// Helper function prototypes
 int isInteger(const char *str);
 int isFloat(const char *str);
 int isAlphabeticWithSpaces(const char *str);
@@ -48,7 +47,7 @@ void getNIDInput(char *input, int maxLength);
 int validateDOB(const char *dob);
 void addAuditLog(const char *action, unsigned long long accountNumber);
 
-// Main function prototypes
+
 void bankingMenu();
 void createAccount();
 void updateAccount();
@@ -68,7 +67,7 @@ int main() {
         printf("2. Exit\n");
         printf("Enter your choice: ");
         scanf("%d", &choice);
-        while (getchar() != '\n'); // Clear input buffer
+        while (getchar() != '\n'); 
 
         if (choice == 1) {
             char username[20], password[20];
@@ -76,7 +75,7 @@ int main() {
             scanf("%19s", username);
             printf("Enter password: ");
             scanf("%19s", password);
-            while (getchar() != '\n'); // Clear input buffer
+            while (getchar() != '\n'); 
 
             if (strcmp(username, "priyanka") == 0 && strcmp(password, "priyanka123") == 0) {
                 printf("Login successful.\n");
@@ -110,7 +109,7 @@ void bankingMenu() {
         printf("10. Exit\n");
         printf("Enter your choice: ");
         scanf("%d", &choice);
-        while (getchar() != '\n'); // Clear input buffer
+        while (getchar() != '\n'); 
 
         switch (choice) {
             case 1: createAccount(); break;
@@ -128,7 +127,6 @@ void bankingMenu() {
     }
 }
 
-// Helper function implementations
 int isInteger(const char *str) {
     while (*str) {
         if (!isdigit(*str)) return 0;
@@ -162,7 +160,7 @@ void getIntegerInput(const char *prompt, char *input, int maxLength) {
         printf("%s", prompt);
         scanf("%s", input);
         int c;
-        while ((c = getchar()) != '\n' && c != EOF); // Clear buffer
+        while ((c = getchar()) != '\n' && c != EOF);
         if (isInteger(input)) break;
         printf("Invalid input. Enter digits only.\n");
     }
@@ -173,7 +171,7 @@ void getFloatInput(const char *prompt, char *input, int maxLength) {
         printf("%s", prompt);
         scanf("%s", input);
         int c;
-        while ((c = getchar()) != '\n' && c != EOF); // Clear buffer
+        while ((c = getchar()) != '\n' && c != EOF); 
         if (isFloat(input)) break;
         printf("Invalid input. Enter a valid number.\n");
     }
@@ -249,7 +247,7 @@ void addAuditLog(const char *action, unsigned long long accountNumber) {
     auditLogs[auditLogCount++] = log;
 }
 
-// Main banking functions
+
 void createAccount() {
     if (accountCount >= MAX_ACCOUNTS) {
         printf("Account limit reached.\n");
@@ -278,7 +276,7 @@ void updateAccount() {
     unsigned long long accNum;
     printf("Enter account number: ");
     scanf("%llu", &accNum);
-    while (getchar() != '\n'); // Clear buffer
+    while (getchar() != '\n'); 
 
     for (int i = 0; i < accountCount; i++) {
         if (accounts[i].accountNumber == accNum) {
@@ -321,7 +319,7 @@ void deposit() {
     unsigned long long accNum;
     printf("Enter account number: ");
     scanf("%llu", &accNum);
-    while (getchar() != '\n'); // Clear buffer
+    while (getchar() != '\n');
 
     for (int i = 0; i < accountCount; i++) {
         if (accounts[i].accountNumber == accNum) {
@@ -344,7 +342,7 @@ void withdraw() {
     unsigned long long accNum;
     printf("Enter account number: ");
     scanf("%llu", &accNum);
-    while (getchar() != '\n'); // Clear buffer
+    while (getchar() != '\n');
 
     for (int i = 0; i < accountCount; i++) {
         if (accounts[i].accountNumber == accNum) {
@@ -371,7 +369,7 @@ void checkBalance() {
     unsigned long long accNum;
     printf("Enter account number: ");
     scanf("%llu", &accNum);
-    while (getchar() != '\n'); // Clear buffer
+    while (getchar() != '\n'); 
 
     for (int i = 0; i < accountCount; i++) {
         if (accounts[i].accountNumber == accNum) {
@@ -391,7 +389,7 @@ void viewTransactions() {
     unsigned long long accNum;
     printf("Enter account number: ");
     scanf("%llu", &accNum);
-    while (getchar() != '\n'); // Clear buffer
+    while (getchar() != '\n');
 
     for (int i = 0; i < accountCount; i++) {
         if (accounts[i].accountNumber == accNum) {
@@ -415,8 +413,7 @@ void deleteAccount() {
     unsigned long long accNum;
     printf("Enter account number: ");
     scanf("%llu", &accNum);
-    while (getchar() != '\n'); // Clear buffer
-
+    while (getchar() != '\n'); 
     for (int i = 0; i < accountCount; i++) {
         if (accounts[i].accountNumber == accNum) {
             for (int j = i; j < accountCount-1; j++)
