@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <time.h>
 
 #define MAX_ACCOUNTS 100
 #define MAX_TRANSACTIONS 100
+#define MAX_AUDIT_LOGS 1000
 
 typedef struct {
     char type[20]; // "Deposit" or "Withdrawal"
@@ -11,262 +14,89 @@ typedef struct {
 } Transaction;
 
 typedef struct {
-    int accountNumber;
+    unsigned long long accountNumber;
     char name[50];
-    char address[100]; // Address field
-    char nid[20];      // National ID (NID) field
-    char dob[20];      // New field: Date of Birth (DOB)
+    char address[100];
+    char nid[20];      // National ID (10 digits)
+    char dob[20];      // Date of Birth (DD-MM-YYYY)
     float balance;
     Transaction transactions[MAX_TRANSACTIONS];
     int transactionCount;
 } Account;
 
+typedef struct {
+    time_t timestamp;
+    char action[100];
+    unsigned long long accountNumber;
+} AuditLog;
+
 Account accounts[MAX_ACCOUNTS];
+AuditLog auditLogs[MAX_AUDIT_LOGS];
 int accountCount = 0;
+int auditLogCount = 0;
+unsigned long long nextAccountNumber = 10000; // 5-digit starting number
 
-// Function to check if an account number already exists
-int isAccountNumberUnique(int accountNumber) {
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accountNumber) {
-            return 0; // Account number is not unique
-        }
-    }
-    return 1; // Account number is unique
-}
+// Helper function prototypes
+int isInteger(const char *str);
+int isFloat(const char *str);
+int isAlphabeticWithSpaces(const char *str);
+void getIntegerInput(const char *prompt, char *input, int maxLength);
+void getFloatInput(const char *prompt, char *input, int maxLength);
+void getAlphabeticWithSpacesInput(const char *prompt, char *input, int maxLength);
+void getDOBInput(char *input, int maxLength);
+void getNIDInput(char *input, int maxLength);
+int validateDOB(const char *dob);
+void addAuditLog(const char *action, unsigned long long accountNumber);
 
-void createAccount() {
-    if (accountCount >= MAX_ACCOUNTS) {
-        printf("Cannot create more accounts. Limit reached.\n");
-        return;
-    }
-
-    Account newAccount;
-    newAccount.transactionCount = 0;
-
-    // Prompt user to enter account number
-    printf("Enter account number: ");
-    scanf("%d", &newAccount.accountNumber);
-
-    // Check if the account number is unique
-    if (!isAccountNumberUnique(newAccount.accountNumber)) {
-        printf("Account number already exists. Please try again.\n");
-        return;
-    }
-
-    printf("Enter name: ");
-    scanf("%s", newAccount.name);
-
-    printf("Enter address: ");
-    getchar(); // Clear the newline character from the buffer
-    fgets(newAccount.address, sizeof(newAccount.address), stdin);
-    newAccount.address[strcspn(newAccount.address, "\n")] = '\0'; // Remove trailing newline
-
-    printf("Enter NID (National ID): ");
-    scanf("%s", newAccount.nid);
-
-    printf("Enter Date of Birth (DD-MM-YYYY): ");
-    scanf("%s", newAccount.dob); // Input DOB in DD-MM-YYYY format
-
-    printf("Enter initial balance: ");
-    scanf("%f", &newAccount.balance);
-
-    accounts[accountCount] = newAccount;
-    accountCount++;
-
-    printf("Account created successfully! Account Number: %d\n", newAccount.accountNumber);
-}
-
-void updateAccount() {
-    int accountNumber;
-    printf("Enter account number to update: ");
-    scanf("%d", &accountNumber);
-
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accountNumber) {
-            printf("Current Name: %s\n", accounts[i].name);
-            printf("Do you want to update the name? (y/n): ");
-            char choice;
-            scanf(" %c", &choice); // Note the space before %c to consume leftover newline
-            if (choice == 'y' || choice == 'Y') {
-                printf("Enter new name: ");
-                scanf("%s", accounts[i].name);
-            }
-
-            printf("Current Address: %s\n", accounts[i].address);
-            printf("Do you want to update the address? (y/n): ");
-            scanf(" %c", &choice);
-            if (choice == 'y' || choice == 'Y') {
-                printf("Enter new address: ");
-                getchar(); // Clear the newline character from the buffer
-                fgets(accounts[i].address, sizeof(accounts[i].address), stdin);
-                accounts[i].address[strcspn(accounts[i].address, "\n")] = '\0'; // Remove trailing newline
-            }
-
-            printf("Current NID: %s\n", accounts[i].nid);
-            printf("Do you want to update the NID? (y/n): ");
-            scanf(" %c", &choice);
-            if (choice == 'y' || choice == 'Y') {
-                printf("Enter new NID: ");
-                scanf("%s", accounts[i].nid);
-            }
-
-            printf("Current Date of Birth: %s\n", accounts[i].dob);
-            printf("Do you want to update the Date of Birth? (y/n): ");
-            scanf(" %c", &choice);
-            if (choice == 'y' || choice == 'Y') {
-                printf("Enter new Date of Birth (DD-MM-YYYY): ");
-                scanf("%s", accounts[i].dob);
-            }
-
-            printf("Account updated successfully!\n");
-            return;
-        }
-    }
-
-    printf("Account not found.\n");
-}
-
-void deposit() {
-    int accountNumber;
-    float amount;
-
-    printf("Enter account number: ");
-    scanf("%d", &accountNumber);
-
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accountNumber) {
-            printf("Enter amount to deposit: ");
-            scanf("%f", &amount);
-
-            accounts[i].balance += amount;
-
-            // Log the transaction
-            strcpy(accounts[i].transactions[accounts[i].transactionCount].type, "Deposit");
-            accounts[i].transactions[accounts[i].transactionCount].amount = amount;
-            accounts[i].transactionCount++;
-
-            printf("Deposit successful! New balance: %.2f\n", accounts[i].balance);
-            return;
-        }
-    }
-
-    printf("Account not found.\n");
-}
-
-void withdraw() {
-    int accountNumber;
-    float amount;
-
-    printf("Enter account number: ");
-    scanf("%d", &accountNumber);
-
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accountNumber) {
-            printf("Enter amount to withdraw: ");
-            scanf("%f", &amount);
-
-            if (amount > accounts[i].balance) {
-                printf("Insufficient balance.\n");
-            } else {
-                accounts[i].balance -= amount;
-
-                // Log the transaction
-                strcpy(accounts[i].transactions[accounts[i].transactionCount].type, "Withdrawal");
-                accounts[i].transactions[accounts[i].transactionCount].amount = amount;
-                accounts[i].transactionCount++;
-
-                printf("Withdrawal successful! New balance: %.2f\n", accounts[i].balance);
-            }
-            return;
-        }
-    }
-
-    printf("Account not found.\n");
-}
-
-void checkBalance() {
-    int accountNumber;
-
-    printf("Enter account number: ");
-    scanf("%d", &accountNumber);
-
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accountNumber) {
-            printf("Account Holder: %s\n", accounts[i].name);
-            printf("Address: %s\n", accounts[i].address); // Display address
-            printf("NID: %s\n", accounts[i].nid);         // Display NID
-            printf("Date of Birth: %s\n", accounts[i].dob); // Display DOB
-            printf("Balance: %.2f\n", accounts[i].balance);
-            return;
-        }
-    }
-
-    printf("Account not found.\n");
-}
-
-void viewTransactions() {
-    int accountNumber;
-
-    printf("Enter account number: ");
-    scanf("%d", &accountNumber);
-
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accountNumber) {
-            if (accounts[i].transactionCount == 0) {
-                printf("No transactions available for this account.\n");
-                return;
-            }
-
-            printf("Transaction history for Account Number %d:\n", accounts[i].accountNumber);
-            for (int j = 0; j < accounts[i].transactionCount; j++) {
-                printf("Type: %s, Amount: %.2f\n",
-                       accounts[i].transactions[j].type,
-                       accounts[i].transactions[j].amount);
-            }
-            return;
-        }
-    }
-
-    printf("Account not found.\n");
-}
-
-void deleteAccount() {
-    int accountNumber;
-
-    printf("Enter account number to delete: ");
-    scanf("%d", &accountNumber);
-
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accountNumber) {
-            for (int j = i; j < accountCount - 1; j++) {
-                accounts[j] = accounts[j + 1];
-            }
-            accountCount--;
-            printf("Account deleted successfully.\n");
-            return;
-        }
-    }
-
-    printf("Account not found.\n");
-}
-
-void displayAllAccounts() {
-    if (accountCount == 0) {
-        printf("No accounts available.\n");
-        return;
-    }
-
-    printf("List of all accounts:\n");
-    for (int i = 0; i < accountCount; i++) {
-        printf("Account Number: %d, Name: %s, Address: %s, NID: %s, DOB: %s, Balance: %.2f\n",
-               accounts[i].accountNumber, accounts[i].name, accounts[i].address, accounts[i].nid, accounts[i].dob, accounts[i].balance);
-    }
-}
+// Main function prototypes
+void bankingMenu();
+void createAccount();
+void updateAccount();
+void deposit();
+void withdraw();
+void checkBalance();
+void viewTransactions();
+void deleteAccount();
+void displayAllAccounts();
+void viewAudit();
 
 int main() {
     int choice;
-
     while (1) {
+        printf("\n--- Login Menu ---\n");
+        printf("1. Login\n");
+        printf("2. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        while (getchar() != '\n'); // Clear input buffer
+
+        if (choice == 1) {
+            char username[20], password[20];
+            printf("Enter username: ");
+            scanf("%19s", username);
+            printf("Enter password: ");
+            scanf("%19s", password);
+            while (getchar() != '\n'); // Clear input buffer
+
+            if (strcmp(username, "priyanka") == 0 && strcmp(password, "priyanka123") == 0) {
+                printf("Login successful.\n");
+                bankingMenu();
+            } else {
+                printf("Invalid username or password.\n");
+            }
+        } else if (choice == 2) {
+            exit(0);
+        } else {
+            printf("Invalid choice.\n");
+        }
+    }
+    return 0;
+}
+
+void bankingMenu() {
+    int choice;
+    int stayInMenu = 1;
+    while (stayInMenu) {
         printf("\n--- Banking System ---\n");
         printf("1. Create New Account\n");
         printf("2. Deposit\n");
@@ -274,44 +104,357 @@ int main() {
         printf("4. Check Balance\n");
         printf("5. View Transactions\n");
         printf("6. Update Account\n");
-        printf("7. Delete Existing Account\n");
+        printf("7. Delete Account\n");
         printf("8. Display All Accounts\n");
-        printf("9. Exit\n");
+        printf("9. Audit \n");
+        printf("10. Exit\n");
         printf("Enter your choice: ");
         scanf("%d", &choice);
+        while (getchar() != '\n'); // Clear input buffer
 
         switch (choice) {
-            case 1:
-                createAccount();
-                break;
-            case 2:
-                deposit();
-                break;
-            case 3:
-                withdraw();
-                break;
-            case 4:
-                checkBalance();
-                break;
-            case 5:
-                viewTransactions();
-                break;
-            case 6:
-                updateAccount();
-                break;
-            case 7:
-                deleteAccount();
-                break;
-            case 8:
-                displayAllAccounts();
-                break;
-            case 9:
-                printf("Exiting the system. Goodbye!\n");
-                exit(0);
-            default:
-                printf("Invalid choice. Please try again.\n");
+            case 1: createAccount(); break;
+            case 2: deposit(); break;
+            case 3: withdraw(); break;
+            case 4: checkBalance(); break;
+            case 5: viewTransactions(); break;
+            case 6: updateAccount(); break;
+            case 7: deleteAccount(); break;
+            case 8: displayAllAccounts(); break;
+            case 9: viewAudit(); break;
+            case 10: stayInMenu = 0; break;
+            default: printf("Invalid choice.\n");
         }
     }
+}
 
-    return 0;
+// Helper function implementations
+int isInteger(const char *str) {
+    while (*str) {
+        if (!isdigit(*str)) return 0;
+        str++;
+    }
+    return 1;
+}
+
+int isFloat(const char *str) {
+    int decimalPoint = 0;
+    while (*str) {
+        if (*str == '.') {
+            if (decimalPoint) return 0;
+            decimalPoint = 1;
+        } else if (!isdigit(*str)) return 0;
+        str++;
+    }
+    return 1;
+}
+
+int isAlphabeticWithSpaces(const char *str) {
+    while (*str) {
+        if (!isalpha(*str) && *str != ' ') return 0;
+        str++;
+    }
+    return 1;
+}
+
+void getIntegerInput(const char *prompt, char *input, int maxLength) {
+    while (1) {
+        printf("%s", prompt);
+        scanf("%s", input);
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF); // Clear buffer
+        if (isInteger(input)) break;
+        printf("Invalid input. Enter digits only.\n");
+    }
+}
+
+void getFloatInput(const char *prompt, char *input, int maxLength) {
+    while (1) {
+        printf("%s", prompt);
+        scanf("%s", input);
+        int c;
+        while ((c = getchar()) != '\n' && c != EOF); // Clear buffer
+        if (isFloat(input)) break;
+        printf("Invalid input. Enter a valid number.\n");
+    }
+}
+
+void getAlphabeticWithSpacesInput(const char *prompt, char *input, int maxLength) {
+    while (1) {
+        printf("%s", prompt);
+        fgets(input, maxLength, stdin);
+        input[strcspn(input, "\n")] = '\0';
+        if (isAlphabeticWithSpaces(input)) break;
+        printf("Invalid input. Use letters and spaces only.\n");
+    }
+}
+
+void getDOBInput(char *input, int maxLength) {
+    while (1) {
+        printf("Enter Date of Birth (DD-MM-YYYY): ");
+        fgets(input, maxLength, stdin);
+        input[strcspn(input, "\n")] = '\0';
+
+        if (validateDOB(input)) break;
+        printf("Invalid date. Check format (DD-MM-YYYY) and validity.\n");
+    }
+}
+
+void getNIDInput(char *input, int maxLength) {
+    while (1) {
+        getIntegerInput("Enter NID (10 digits): ", input, maxLength);
+        if (strlen(input) == 10) break;
+        printf("NID must be 10 digits.\n");
+    }
+}
+
+int validateDOB(const char *dob) {
+    if (strlen(dob) != 10) return 0;
+    if (dob[2] != '-' || dob[5] != '-') return 0;
+
+    char dd[3], mm[3], yyyy[5];
+    strncpy(dd, dob, 2);
+    dd[2] = '\0';
+    strncpy(mm, dob + 3, 2);
+    mm[2] = '\0';
+    strncpy(yyyy, dob + 6, 4);
+    yyyy[4] = '\0';
+
+    if (!isInteger(dd) || !isInteger(mm) || !isInteger(yyyy)) return 0;
+
+    int day = atoi(dd);
+    int month = atoi(mm);
+    int year = atoi(yyyy);
+
+    if (year < 1900 || year > 2007) return 0;
+    if (month < 1 || month > 12) return 0;
+
+    int maxDay;
+    switch (month) {
+        case 2: maxDay = 28; break;
+        case 4: case 6: case 9: case 11: maxDay = 30; break;
+        default: maxDay = 31;
+    }
+    if (day < 1 || day > maxDay) return 0;
+    return 1;
+}
+
+void addAuditLog(const char *action, unsigned long long accountNumber) {
+    if (auditLogCount >= MAX_AUDIT_LOGS) return;
+    AuditLog log;
+    log.timestamp = time(NULL);
+    strncpy(log.action, action, 99);
+    log.action[99] = '\0';
+    log.accountNumber = accountNumber;
+    auditLogs[auditLogCount++] = log;
+}
+
+// Main banking functions
+void createAccount() {
+    if (accountCount >= MAX_ACCOUNTS) {
+        printf("Account limit reached.\n");
+        return;
+    }
+
+    Account newAccount;
+    newAccount.transactionCount = 0;
+    newAccount.accountNumber = nextAccountNumber++;
+
+    getAlphabeticWithSpacesInput("Enter name: ", newAccount.name, 50);
+    getAlphabeticWithSpacesInput("Enter address: ", newAccount.address, 100);
+    getNIDInput(newAccount.nid, 20);
+    getDOBInput(newAccount.dob, 20);
+
+    char balanceStr[20];
+    getFloatInput("Enter initial balance: ", balanceStr, 20);
+    newAccount.balance = atof(balanceStr);
+
+    accounts[accountCount++] = newAccount;
+    printf("Account created successfully. Your account number is %llu.\n", newAccount.accountNumber);
+    addAuditLog("Account created", newAccount.accountNumber);
+}
+
+void updateAccount() {
+    unsigned long long accNum;
+    printf("Enter account number: ");
+    scanf("%llu", &accNum);
+    while (getchar() != '\n'); // Clear buffer
+
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].accountNumber == accNum) {
+            printf("Updating account %llu\n", accNum);
+            char choice;
+
+            printf("Update name? (y/n): ");
+            scanf(" %c", &choice);
+            while (getchar() != '\n');
+            if (choice == 'y' || choice == 'Y')
+                getAlphabeticWithSpacesInput("New name: ", accounts[i].name, 50);
+
+            printf("Update address? (y/n): ");
+            scanf(" %c", &choice);
+            while (getchar() != '\n');
+            if (choice == 'Y' || choice == 'y')
+                getAlphabeticWithSpacesInput("New address: ", accounts[i].address, 100);
+
+            printf("Update NID? (y/n): ");
+            scanf(" %c", &choice);
+            while (getchar() != '\n');
+            if (choice == 'Y' || choice == 'y')
+                getNIDInput(accounts[i].nid, 20);
+
+            printf("Update DOB? (y/n): ");
+            scanf(" %c", &choice);
+            while (getchar() != '\n');
+            if (choice == 'Y' || choice == 'y')
+                getDOBInput(accounts[i].dob, 20);
+
+            printf("Account updated.\n");
+            addAuditLog("Account updated", accNum);
+            return;
+        }
+    }
+    printf("Account not found.\n");
+}
+
+void deposit() {
+    unsigned long long accNum;
+    printf("Enter account number: ");
+    scanf("%llu", &accNum);
+    while (getchar() != '\n'); // Clear buffer
+
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].accountNumber == accNum) {
+            char amountStr[20];
+            getFloatInput("Deposit amount: ", amountStr, 20);
+            float amount = atof(amountStr);
+
+            accounts[i].balance += amount;
+            Transaction t = {"Deposit", amount};
+            accounts[i].transactions[accounts[i].transactionCount++] = t;
+            printf("Deposit successful. New balance: %.2f\n", accounts[i].balance);
+            addAuditLog("Deposit", accNum);
+            return;
+        }
+    }
+    printf("Account not found.\n");
+}
+
+void withdraw() {
+    unsigned long long accNum;
+    printf("Enter account number: ");
+    scanf("%llu", &accNum);
+    while (getchar() != '\n'); // Clear buffer
+
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].accountNumber == accNum) {
+            char amountStr[20];
+            getFloatInput("Withdrawal amount: ", amountStr, 20);
+            float amount = atof(amountStr);
+
+            if (amount > accounts[i].balance) {
+                printf("Insufficient funds.\n");
+            } else {
+                accounts[i].balance -= amount;
+                Transaction t = {"Withdrawal", amount};
+                accounts[i].transactions[accounts[i].transactionCount++] = t;
+                printf("Withdrawal successful. New balance: %.2f\n", accounts[i].balance);
+                addAuditLog("Withdrawal", accNum);
+            }
+            return;
+        }
+    }
+    printf("Account not found.\n");
+}
+
+void checkBalance() {
+    unsigned long long accNum;
+    printf("Enter account number: ");
+    scanf("%llu", &accNum);
+    while (getchar() != '\n'); // Clear buffer
+
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].accountNumber == accNum) {
+            printf("Name: %s\n", accounts[i].name);
+            printf("Address: %s\n", accounts[i].address);
+            printf("NID: %s\n", accounts[i].nid);
+            printf("DOB: %s\n", accounts[i].dob);
+            printf("Balance: %.2f\n", accounts[i].balance);
+            addAuditLog("Balance checked", accNum);
+            return;
+        }
+    }
+    printf("Account not found.\n");
+}
+
+void viewTransactions() {
+    unsigned long long accNum;
+    printf("Enter account number: ");
+    scanf("%llu", &accNum);
+    while (getchar() != '\n'); // Clear buffer
+
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].accountNumber == accNum) {
+            if (accounts[i].transactionCount == 0) {
+                printf("No transactions.\n");
+                return;
+            }
+            printf("Transaction History:\n");
+            for (int j = 0; j < accounts[i].transactionCount; j++) {
+                printf("%s: %.2f\n", accounts[i].transactions[j].type,
+                                      accounts[i].transactions[j].amount);
+            }
+            addAuditLog("Transactions viewed", accNum);
+            return;
+        }
+    }
+    printf("Account not found.\n");
+}
+
+void deleteAccount() {
+    unsigned long long accNum;
+    printf("Enter account number: ");
+    scanf("%llu", &accNum);
+    while (getchar() != '\n'); // Clear buffer
+
+    for (int i = 0; i < accountCount; i++) {
+        if (accounts[i].accountNumber == accNum) {
+            for (int j = i; j < accountCount-1; j++)
+                accounts[j] = accounts[j+1];
+            accountCount--;
+            printf("Account deleted.\n");
+            addAuditLog("Account deleted", accNum);
+            return;
+        }
+    }
+    printf("Account not found.\n");
+}
+
+void displayAllAccounts() {
+    if (accountCount == 0) {
+        printf("No accounts.\n");
+        return;
+    }
+    printf("All Accounts:\n");
+    for (int i = 0; i < accountCount; i++) {
+        printf("Account %llu: %s, %s, NID: %s, DOB: %s, Balance: %.2f\n",
+               accounts[i].accountNumber, accounts[i].name, accounts[i].address,
+               accounts[i].nid, accounts[i].dob, accounts[i].balance);
+    }
+    addAuditLog("Viewed all accounts", 0);
+}
+
+void viewAudit() {
+    if (auditLogCount == 0) {
+        printf("No audit entries.\n");
+        return;
+    }
+    printf("\n--- Audit  ---\n");
+    for (int i = 0; i < auditLogCount; i++) {
+        struct tm *timeinfo = localtime(&auditLogs[i].timestamp);
+        char timeStr[20];
+        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", timeinfo);
+        printf("[%s] Account %llu: %s\n",
+               timeStr, auditLogs[i].accountNumber, auditLogs[i].action);
+    }
 }
