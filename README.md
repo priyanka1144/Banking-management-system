@@ -126,7 +126,7 @@ This project is open-source and available under the MIT License.
 
 ## Author 🖋️
 
-[Your Name](https://github.com/yourusername)
+[Priyanka](https://github.com/priyanka1144)
 
 ---
 
