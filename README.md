@@ -132,7 +132,7 @@ This project is open-source and available under the MIT License.
 ### Demo Screenshots 📸
 
 **Login Menu:**
-![Login Menu](https://via.placeholder.com/400x200.png?text=Login+Menu)
+![Login Menu]([https://via.placeholder.com/400x200.png?text=Login+Menu](https://github.com/priyanka1144/Banking-management-system/blob/main/login.png))
 
 **Banking System Menu:**
 ![Banking Menu](https://via.placeholder.com/400x200.png?text=Banking+System+Menu)
