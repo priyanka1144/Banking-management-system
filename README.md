@@ -57,7 +57,7 @@ A secure console-based banking system management application built in C, featuri
 
 2. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/banking-system.git
+    https://github.com/priyanka1144/Banking-management-system
     ```
 
 3. Open Command Prompt or MinGW terminal and navigate to the project directory:
@@ -86,7 +86,7 @@ A secure console-based banking system management application built in C, featuri
 
 2. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/banking-system.git
+    https://github.com/priyanka1144/Banking-management-system
     ```
 
 3. Navigate into the project directory:
