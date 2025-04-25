@@ -3,129 +3,66 @@
 #include <string.h>
 #include <ctype.h>
 #include <time.h>
+#include <sqlite3.h>
 
 #define MAX_ACCOUNTS 100
 #define MAX_TRANSACTIONS 100
 #define MAX_AUDIT_LOGS 1000
 
-typedef struct {
-    char type[20]; 
-    float amount;
-} Transaction;
+sqlite3 *db;
 
-typedef struct {
-    unsigned long long accountNumber;
-    char name[50];
-    char address[100];
-    char nid[20];      
-    char dob[20];      
-    float balance;
-    Transaction transactions[MAX_TRANSACTIONS];
-    int transactionCount;
-} Account;
+int initializeDatabase() {
+    char *errMsg = 0;
 
-typedef struct {
-    time_t timestamp;
-    char action[100];
-    unsigned long long accountNumber;
-} AuditLog;
+    const char *sqlCreateAccounts = 
+        "CREATE TABLE IF NOT EXISTS Accounts ("
+        "accountNumber INTEGER PRIMARY KEY,"
+        "name TEXT NOT NULL,"
+        "address TEXT NOT NULL,"
+        "nid TEXT UNIQUE NOT NULL,"
+        "dob TEXT NOT NULL,"
+        "balance REAL NOT NULL);";
 
-Account accounts[MAX_ACCOUNTS];
-AuditLog auditLogs[MAX_AUDIT_LOGS];
-int accountCount = 0;
-int auditLogCount = 0;
-unsigned long long nextAccountNumber = 10000; 
+    const char *sqlCreateTransactions = 
+        "CREATE TABLE IF NOT EXISTS Transactions ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "accountNumber INTEGER NOT NULL,"
+        "type TEXT NOT NULL,"
+        "amount REAL NOT NULL,"
+        "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,"
+        "FOREIGN KEY(accountNumber) REFERENCES Accounts(accountNumber));";
 
-int isInteger(const char *str);
-int isFloat(const char *str);
-int isAlphabeticWithSpaces(const char *str);
-void getIntegerInput(const char *prompt, char *input, int maxLength);
-void getFloatInput(const char *prompt, char *input, int maxLength);
-void getAlphabeticWithSpacesInput(const char *prompt, char *input, int maxLength);
-void getDOBInput(char *input, int maxLength);
-void getNIDInput(char *input, int maxLength);
-int validateDOB(const char *dob);
-void addAuditLog(const char *action, unsigned long long accountNumber);
+    const char *sqlCreateAuditLogs = 
+        "CREATE TABLE IF NOT EXISTS AuditLogs ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,"
+        "action TEXT NOT NULL,"
+        "accountNumber INTEGER);";
 
-
-void bankingMenu();
-void createAccount();
-void updateAccount();
-void deposit();
-void withdraw();
-void checkBalance();
-void viewTransactions();
-void deleteAccount();
-void displayAllAccounts();
-void viewAudit();
-
-int main() {
-    int choice;
-    while (1) {
-        printf("\n--- Login Menu ---\n");
-        printf("1. Login\n");
-        printf("2. Exit\n");
-        printf("Enter your choice: ");
-        scanf("%d", &choice);
-        while (getchar() != '\n'); 
-
-        if (choice == 1) {
-            char username[20], password[20];
-            printf("Enter username: ");
-            scanf("%19s", username);
-            printf("Enter password: ");
-            scanf("%19s", password);
-            while (getchar() != '\n'); 
-
-            if (strcmp(username, "priyanka") == 0 && strcmp(password, "priyanka123") == 0) {
-                printf("Login successful.\n");
-                bankingMenu();
-            } else {
-                printf("Invalid username or password.\n");
-            }
-        } else if (choice == 2) {
-            exit(0);
-        } else {
-            printf("Invalid choice.\n");
-        }
+    int rc = sqlite3_exec(db, sqlCreateAccounts, 0, 0, &errMsg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", errMsg);
+        sqlite3_free(errMsg);
+        return 0;
     }
-    return 0;
+
+    rc = sqlite3_exec(db, sqlCreateTransactions, 0, 0, &errMsg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", errMsg);
+        sqlite3_free(errMsg);
+        return 0;
+    }
+
+    rc = sqlite3_exec(db, sqlCreateAuditLogs, 0, 0, &errMsg);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "SQL error: %s\n", errMsg);
+        sqlite3_free(errMsg);
+        return 0;
+    }
+
+    return 1;
 }
 
-void bankingMenu() {
-    int choice;
-    int stayInMenu = 1;
-    while (stayInMenu) {
-        printf("\n--- Banking System ---\n");
-        printf("1. Create New Account\n");
-        printf("2. Deposit\n");
-        printf("3. Withdraw\n");
-        printf("4. Check Balance\n");
-        printf("5. View Transactions\n");
-        printf("6. Update Account\n");
-        printf("7. Delete Account\n");
-        printf("8. Display All Accounts\n");
-        printf("9. Audit \n");
-        printf("10. Exit\n");
-        printf("Enter your choice: ");
-        scanf("%d", &choice);
-        while (getchar() != '\n'); 
-
-        switch (choice) {
-            case 1: createAccount(); break;
-            case 2: deposit(); break;
-            case 3: withdraw(); break;
-            case 4: checkBalance(); break;
-            case 5: viewTransactions(); break;
-            case 6: updateAccount(); break;
-            case 7: deleteAccount(); break;
-            case 8: displayAllAccounts(); break;
-            case 9: viewAudit(); break;
-            case 10: stayInMenu = 0; break;
-            default: printf("Invalid choice.\n");
-        }
-    }
-}
 
 int isInteger(const char *str) {
     while (*str) {
@@ -158,9 +95,8 @@ int isAlphabeticWithSpaces(const char *str) {
 void getIntegerInput(const char *prompt, char *input, int maxLength) {
     while (1) {
         printf("%s", prompt);
-        scanf("%s", input);
-        int c;
-        while ((c = getchar()) != '\n' && c != EOF);
+        fgets(input, maxLength, stdin);
+        input[strcspn(input, "\n")] = '\0';
         if (isInteger(input)) break;
         printf("Invalid input. Enter digits only.\n");
     }
@@ -169,9 +105,8 @@ void getIntegerInput(const char *prompt, char *input, int maxLength) {
 void getFloatInput(const char *prompt, char *input, int maxLength) {
     while (1) {
         printf("%s", prompt);
-        scanf("%s", input);
-        int c;
-        while ((c = getchar()) != '\n' && c != EOF); 
+        fgets(input, maxLength, stdin);
+        input[strcspn(input, "\n")] = '\0';
         if (isFloat(input)) break;
         printf("Invalid input. Enter a valid number.\n");
     }
@@ -184,25 +119,6 @@ void getAlphabeticWithSpacesInput(const char *prompt, char *input, int maxLength
         input[strcspn(input, "\n")] = '\0';
         if (isAlphabeticWithSpaces(input)) break;
         printf("Invalid input. Use letters and spaces only.\n");
-    }
-}
-
-void getDOBInput(char *input, int maxLength) {
-    while (1) {
-        printf("Enter Date of Birth (DD-MM-YYYY): ");
-        fgets(input, maxLength, stdin);
-        input[strcspn(input, "\n")] = '\0';
-
-        if (validateDOB(input)) break;
-        printf("Invalid date. Check format (DD-MM-YYYY) and validity.\n");
-    }
-}
-
-void getNIDInput(char *input, int maxLength) {
-    while (1) {
-        getIntegerInput("Enter NID (10 digits): ", input, maxLength);
-        if (strlen(input) == 10) break;
-        printf("NID must be 10 digits.\n");
     }
 }
 
@@ -233,225 +149,403 @@ int validateDOB(const char *dob) {
         case 4: case 6: case 9: case 11: maxDay = 30; break;
         default: maxDay = 31;
     }
-    if (day < 1 || day > maxDay) return 0;
-    return 1;
+    return day >= 1 && day <= maxDay;
+}
+
+void getDOBInput(char *input, int maxLength) {
+    while (1) {
+        printf("Enter Date of Birth (DD-MM-YYYY): ");
+        fgets(input, maxLength, stdin);
+        input[strcspn(input, "\n")] = '\0';
+        if (validateDOB(input)) break;
+        printf("Invalid date format or impossible date.\n");
+    }
+}
+
+void getNIDInput(char *input, int maxLength) {
+    while (1) {
+        getIntegerInput("Enter NID (10 digits): ", input, maxLength);
+        if (strlen(input) == 10) break;
+        printf("NID must be exactly 10 digits.\n");
+    }
 }
 
 void addAuditLog(const char *action, unsigned long long accountNumber) {
-    if (auditLogCount >= MAX_AUDIT_LOGS) return;
-    AuditLog log;
-    log.timestamp = time(NULL);
-    strncpy(log.action, action, 99);
-    log.action[99] = '\0';
-    log.accountNumber = accountNumber;
-    auditLogs[auditLogCount++] = log;
+    sqlite3_stmt *stmt;
+    const char *sql = "INSERT INTO AuditLogs (action, accountNumber) VALUES (?, ?);";
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, action, -1, SQLITE_STATIC);
+        sqlite3_bind_int64(stmt, 2, accountNumber);
+        sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+    }
 }
 
 
 void createAccount() {
-    if (accountCount >= MAX_ACCOUNTS) {
-        printf("Account limit reached.\n");
-        return;
-    }
+    char name[50], address[100], nid[20], dob[20], balanceStr[20];
+    float balance;
 
-    Account newAccount;
-    newAccount.transactionCount = 0;
-    newAccount.accountNumber = nextAccountNumber++;
-
-    getAlphabeticWithSpacesInput("Enter name: ", newAccount.name, 50);
-    getAlphabeticWithSpacesInput("Enter address: ", newAccount.address, 100);
-    getNIDInput(newAccount.nid, 20);
-    getDOBInput(newAccount.dob, 20);
-
-    char balanceStr[20];
+    getAlphabeticWithSpacesInput("Enter name: ", name, 50);
+    getAlphabeticWithSpacesInput("Enter address: ", address, 100);
+    getNIDInput(nid, 20);
+    getDOBInput(dob, 20);
     getFloatInput("Enter initial balance: ", balanceStr, 20);
-    newAccount.balance = atof(balanceStr);
+    balance = atof(balanceStr);
 
-    accounts[accountCount++] = newAccount;
-    printf("Account created successfully. Your account number is %llu.\n", newAccount.accountNumber);
-    addAuditLog("Account created", newAccount.accountNumber);
+    sqlite3_stmt *stmt;
+    const char *sql = "INSERT INTO Accounts (name, address, nid, dob, balance) "
+                     "VALUES (?, ?, ?, ?, ?);";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 2, address, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 3, nid, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 4, dob, -1, SQLITE_STATIC);
+        sqlite3_bind_double(stmt, 5, balance);
+
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            printf("Account created successfully. Account Number: %lld\n", sqlite3_last_insert_rowid(db));
+            addAuditLog("Account created", sqlite3_last_insert_rowid(db));
+        } else {
+            printf("Failed to create account.\n");
+        }
+        sqlite3_finalize(stmt);
+    } else {
+        printf("Database error.\n");
+    }
 }
 
 void updateAccount() {
-    unsigned long long accNum;
+    long long accountNumber;
     printf("Enter account number: ");
-    scanf("%llu", &accNum);
-    while (getchar() != '\n'); 
+    scanf("%lld", &accountNumber);
+    while (getchar() != '\n');
 
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accNum) {
-            printf("Updating account %llu\n", accNum);
-            char choice;
+    sqlite3_stmt *stmt;
+    const char *checkSql = "SELECT 1 FROM Accounts WHERE accountNumber = ?;";
+    int exists = 0;
+    
+    if (sqlite3_prepare_v2(db, checkSql, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_int64(stmt, 1, accountNumber);
+        if (sqlite3_step(stmt) == SQLITE_ROW) exists = 1;
+        sqlite3_finalize(stmt);
+    }
+    
+    if (!exists) {
+        printf("Account not found.\n");
+        return;
+    }
 
-            printf("Update name? (y/n): ");
-            scanf(" %c", &choice);
-            while (getchar() != '\n');
-            if (choice == 'y' || choice == 'Y')
-                getAlphabeticWithSpacesInput("New name: ", accounts[i].name, 50);
-
-            printf("Update address? (y/n): ");
-            scanf(" %c", &choice);
-            while (getchar() != '\n');
-            if (choice == 'Y' || choice == 'y')
-                getAlphabeticWithSpacesInput("New address: ", accounts[i].address, 100);
-
-            printf("Update NID? (y/n): ");
-            scanf(" %c", &choice);
-            while (getchar() != '\n');
-            if (choice == 'Y' || choice == 'y')
-                getNIDInput(accounts[i].nid, 20);
-
-            printf("Update DOB? (y/n): ");
-            scanf(" %c", &choice);
-            while (getchar() != '\n');
-            if (choice == 'Y' || choice == 'y')
-                getDOBInput(accounts[i].dob, 20);
-
-            printf("Account updated.\n");
-            addAuditLog("Account updated", accNum);
-            return;
+    char name[50], address[100], dob[20];
+    printf("Update name? (y/n): ");
+    if (getchar() == 'y') {
+        while (getchar() != '\n');
+        getAlphabeticWithSpacesInput("New name: ", name, 50);
+        const char *sql = "UPDATE Accounts SET name = ? WHERE accountNumber = ?;";
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+            sqlite3_bind_int64(stmt, 2, accountNumber);
+            sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
         }
     }
-    printf("Account not found.\n");
+
+    printf("Update address? (y/n): ");
+    if (getchar() == 'y') {
+        while (getchar() != '\n');
+        getAlphabeticWithSpacesInput("New address: ", address, 100);
+        const char *sql = "UPDATE Accounts SET address = ? WHERE accountNumber = ?;";
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, address, -1, SQLITE_STATIC);
+            sqlite3_bind_int64(stmt, 2, accountNumber);
+            sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+        }
+    }
+
+    printf("Update DOB? (y/n): ");
+    if (getchar() == 'y') {
+        while (getchar() != '\n');
+        getDOBInput(dob, 20);
+        const char *sql = "UPDATE Accounts SET dob = ? WHERE accountNumber = ?;";
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, dob, -1, SQLITE_STATIC);
+            sqlite3_bind_int64(stmt, 2, accountNumber);
+            sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+        }
+    }
+
+    addAuditLog("Account updated", accountNumber);
+    printf("Account updated successfully.\n");
 }
 
 void deposit() {
-    unsigned long long accNum;
+    long long accountNumber;
+    float amount;
     printf("Enter account number: ");
-    scanf("%llu", &accNum);
+    scanf("%lld", &accountNumber);
     while (getchar() != '\n');
 
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accNum) {
-            char amountStr[20];
-            getFloatInput("Deposit amount: ", amountStr, 20);
-            float amount = atof(amountStr);
+    printf("Enter deposit amount: ");
+    scanf("%f", &amount);
+    while (getchar() != '\n');
 
-            accounts[i].balance += amount;
-            Transaction t = {"Deposit", amount};
-            accounts[i].transactions[accounts[i].transactionCount++] = t;
-            printf("Deposit successful. New balance: %.2f\n", accounts[i].balance);
-            addAuditLog("Deposit", accNum);
-            return;
+    sqlite3_stmt *stmt;
+    const char *sql = "UPDATE Accounts SET balance = balance + ? WHERE accountNumber = ?;";
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_double(stmt, 1, amount);
+        sqlite3_bind_int64(stmt, 2, accountNumber);
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            const char *transSql = "INSERT INTO Transactions (accountNumber, type, amount) VALUES (?, 'Deposit', ?);";
+            sqlite3_stmt *transStmt;
+            if (sqlite3_prepare_v2(db, transSql, -1, &transStmt, 0) == SQLITE_OK) {
+                sqlite3_bind_int64(transStmt, 1, accountNumber);
+                sqlite3_bind_double(transStmt, 2, amount);
+                sqlite3_step(transStmt);
+                sqlite3_finalize(transStmt);
+            }
+            addAuditLog("Deposit", accountNumber);
+            printf("Deposit successful.\n");
+        } else {
+            printf("Account not found.\n");
         }
+        sqlite3_finalize(stmt);
     }
-    printf("Account not found.\n");
 }
 
 void withdraw() {
-    unsigned long long accNum;
+    long long accountNumber;
+    float amount;
     printf("Enter account number: ");
-    scanf("%llu", &accNum);
+    scanf("%lld", &accountNumber);
+    while (getchar() != '\n');
+    printf("Enter withdrawal amount: ");
+    scanf("%f", &amount);
     while (getchar() != '\n');
 
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accNum) {
-            char amountStr[20];
-            getFloatInput("Withdrawal amount: ", amountStr, 20);
-            float amount = atof(amountStr);
-
-            if (amount > accounts[i].balance) {
-                printf("Insufficient funds.\n");
-            } else {
-                accounts[i].balance -= amount;
-                Transaction t = {"Withdrawal", amount};
-                accounts[i].transactions[accounts[i].transactionCount++] = t;
-                printf("Withdrawal successful. New balance: %.2f\n", accounts[i].balance);
-                addAuditLog("Withdrawal", accNum);
-            }
-            return;
+    sqlite3_stmt *stmt;
+    const char *checkBalance = "SELECT balance FROM Accounts WHERE accountNumber = ?;";
+    float currentBalance = 0;
+    
+    if (sqlite3_prepare_v2(db, checkBalance, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_int64(stmt, 1, accountNumber);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            currentBalance = sqlite3_column_double(stmt, 0);
         }
+        sqlite3_finalize(stmt);
     }
-    printf("Account not found.\n");
+
+    if (currentBalance < amount) {
+        printf("Insufficient funds.\n");
+        return;
+    }
+
+    const char *sql = "UPDATE Accounts SET balance = balance - ? WHERE accountNumber = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_double(stmt, 1, amount);
+        sqlite3_bind_int64(stmt, 2, accountNumber);
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+           
+            const char *transSql = "INSERT INTO Transactions (accountNumber, type, amount) VALUES (?, 'Withdrawal', ?);";
+            sqlite3_stmt *transStmt;
+            if (sqlite3_prepare_v2(db, transSql, -1, &transStmt, 0) == SQLITE_OK) {
+                sqlite3_bind_int64(transStmt, 1, accountNumber);
+                sqlite3_bind_double(transStmt, 2, amount);
+                sqlite3_step(transStmt);
+                sqlite3_finalize(transStmt);
+            }
+            addAuditLog("Withdrawal", accountNumber);
+            printf("Withdrawal successful.\n");
+        } else {
+            printf("Account not found.\n");
+        }
+        sqlite3_finalize(stmt);
+    }
 }
 
 void checkBalance() {
-    unsigned long long accNum;
+    long long accountNumber;
     printf("Enter account number: ");
-    scanf("%llu", &accNum);
-    while (getchar() != '\n'); 
+    scanf("%lld", &accountNumber);
+    while (getchar() != '\n');
 
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accNum) {
-            printf("Name: %s\n", accounts[i].name);
-            printf("Address: %s\n", accounts[i].address);
-            printf("NID: %s\n", accounts[i].nid);
-            printf("DOB: %s\n", accounts[i].dob);
-            printf("Balance: %.2f\n", accounts[i].balance);
-            addAuditLog("Balance checked", accNum);
-            return;
+    sqlite3_stmt *stmt;
+    const char *sql = "SELECT name, balance FROM Accounts WHERE accountNumber = ?;";
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_int64(stmt, 1, accountNumber);
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            printf("Account Holder: %s\n", sqlite3_column_text(stmt, 0));
+            printf("Current Balance: %.2f\n", sqlite3_column_double(stmt, 1));
+            addAuditLog("Balance checked", accountNumber);
+        } else {
+            printf("Account not found.\n");
         }
+        sqlite3_finalize(stmt);
     }
-    printf("Account not found.\n");
 }
 
 void viewTransactions() {
-    unsigned long long accNum;
+    long long accountNumber;
     printf("Enter account number: ");
-    scanf("%llu", &accNum);
+    scanf("%lld", &accountNumber);
     while (getchar() != '\n');
 
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accNum) {
-            if (accounts[i].transactionCount == 0) {
-                printf("No transactions.\n");
-                return;
-            }
-            printf("Transaction History:\n");
-            for (int j = 0; j < accounts[i].transactionCount; j++) {
-                printf("%s: %.2f\n", accounts[i].transactions[j].type,
-                                      accounts[i].transactions[j].amount);
-            }
-            addAuditLog("Transactions viewed", accNum);
-            return;
+    sqlite3_stmt *stmt;
+    const char *sql = "SELECT timestamp, type, amount FROM Transactions "
+                     "WHERE accountNumber = ? ORDER BY timestamp DESC LIMIT 10;";
+    
+    printf("Last 10 transactions:\n");
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_int64(stmt, 1, accountNumber);
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            printf("%s | %s | %.2f\n",
+                   sqlite3_column_text(stmt, 0),
+                   sqlite3_column_text(stmt, 1),
+                   sqlite3_column_double(stmt, 2));
         }
+        sqlite3_finalize(stmt);
     }
-    printf("Account not found.\n");
+    addAuditLog("Transactions viewed", accountNumber);
 }
 
 void deleteAccount() {
-    unsigned long long accNum;
-    printf("Enter account number: ");
-    scanf("%llu", &accNum);
-    while (getchar() != '\n'); 
-    for (int i = 0; i < accountCount; i++) {
-        if (accounts[i].accountNumber == accNum) {
-            for (int j = i; j < accountCount-1; j++)
-                accounts[j] = accounts[j+1];
-            accountCount--;
-            printf("Account deleted.\n");
-            addAuditLog("Account deleted", accNum);
-            return;
+    long long accountNumber;
+    printf("Enter account number to delete: ");
+    scanf("%lld", &accountNumber);
+    while (getchar() != '\n');
+
+    sqlite3_stmt *stmt;
+    const char *sql = "DELETE FROM Accounts WHERE accountNumber = ?;";
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        sqlite3_bind_int64(stmt, 1, accountNumber);
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            printf("Account deleted successfully.\n");
+            addAuditLog("Account deleted", accountNumber);
+        } else {
+            printf("Account not found.\n");
         }
+        sqlite3_finalize(stmt);
     }
-    printf("Account not found.\n");
 }
 
 void displayAllAccounts() {
-    if (accountCount == 0) {
-        printf("No accounts.\n");
-        return;
-    }
-    printf("All Accounts:\n");
-    for (int i = 0; i < accountCount; i++) {
-        printf("Account %llu: %s, %s, NID: %s, DOB: %s, Balance: %.2f\n",
-               accounts[i].accountNumber, accounts[i].name, accounts[i].address,
-               accounts[i].nid, accounts[i].dob, accounts[i].balance);
+    sqlite3_stmt *stmt;
+    const char *sql = "SELECT accountNumber, name, balance FROM Accounts;";
+    
+    printf("\nAll Accounts:\n");
+    printf("Account Number\tName\t\tBalance\n");
+    printf("----------------------------------------\n");
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            printf("%-15lld%-20s%.2f\n",
+                   sqlite3_column_int64(stmt, 0),
+                   sqlite3_column_text(stmt, 1),
+                   sqlite3_column_double(stmt, 2));
+        }
+        sqlite3_finalize(stmt);
     }
     addAuditLog("Viewed all accounts", 0);
 }
 
 void viewAudit() {
-    if (auditLogCount == 0) {
-        printf("No audit entries.\n");
-        return;
+    sqlite3_stmt *stmt;
+    const char *sql = "SELECT timestamp, action, accountNumber FROM AuditLogs ORDER BY timestamp DESC LIMIT 20;";
+    
+    printf("\nLast 20 Audit Logs:\n");
+    printf("Timestamp\t\tAction\t\tAccount Number\n");
+    printf("--------------------------------------------------\n");
+    
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            printf("%-20s%-20s%lld\n",
+                   sqlite3_column_text(stmt, 0),
+                   sqlite3_column_text(stmt, 1),
+                   sqlite3_column_int64(stmt, 2));
+        }
+        sqlite3_finalize(stmt);
     }
-    printf("\n--- Audit  ---\n");
-    for (int i = 0; i < auditLogCount; i++) {
-        struct tm *timeinfo = localtime(&auditLogs[i].timestamp);
-        char timeStr[20];
-        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", timeinfo);
-        printf("[%s] Account %llu: %s\n",
-               timeStr, auditLogs[i].accountNumber, auditLogs[i].action);
+}
+
+void bankingMenu() {
+    int choice;
+    do {
+        printf("\n--- Banking System Menu ---\n");
+        printf("1. Create New Account\n");
+        printf("2. Deposit\n");
+        printf("3. Withdraw\n");
+        printf("4. Check Balance\n");
+        printf("5. View Transactions\n");
+        printf("6. Update Account\n");
+        printf("7. Delete Account\n");
+        printf("8. Display All Accounts\n");
+        printf("9. View Audit Logs\n");
+        printf("10. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        while (getchar() != '\n');
+
+        switch (choice) {
+            case 1: createAccount(); break;
+            case 2: deposit(); break;
+            case 3: withdraw(); break;
+            case 4: checkBalance(); break;
+            case 5: viewTransactions(); break;
+            case 6: updateAccount(); break;
+            case 7: deleteAccount(); break;
+            case 8: displayAllAccounts(); break;
+            case 9: viewAudit(); break;
+            case 10: printf("Exiting...\n"); break;
+            default: printf("Invalid choice. Try again.\n");
+        }
+    } while (choice != 10);
+}
+
+int main() {
+    int rc = sqlite3_open("bank.db", &db);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        return 1;
     }
+
+    if (!initializeDatabase()) {
+        sqlite3_close(db);
+        return 1;
+    }
+
+    int loginAttempts = 0;
+    char username[20], password[20];
+    
+    while (loginAttempts < 3) {
+        printf("\n--- Login ---\n");
+        printf("Username: ");
+        fgets(username, sizeof(username), stdin);
+        username[strcspn(username, "\n")] = '\0';
+        
+        printf("Password: ");
+        fgets(password, sizeof(password), stdin);
+        password[strcspn(password, "\n")] = '\0';
+
+        if (strcmp(username, "priyanka") == 0 && strcmp(password, "priyanka123") == 0) {
+            printf("Login successful!\n");
+            bankingMenu();
+            break;
+        } else {
+            printf("Invalid credentials. Attempts left: %d\n", 2 - loginAttempts);
+            loginAttempts++;
+        }
+    }
+
+    if (loginAttempts >= 3) {
+        printf("Too many failed attempts. Exiting.\n");
+    }
+
+    sqlite3_close(db);
+    return 0;
 }
