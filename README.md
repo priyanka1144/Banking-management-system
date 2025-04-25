@@ -21,21 +21,24 @@ A secure console-based banking system management application built in C, featuri
 1. Update your package list and install the build tools:
     ```bash
     sudo apt update && sudo apt install build-essential -y
+    sudo apt update
+    sudo apt install mousepad -y
+    sudo apt install build-essential git sqlite3 libsqlite3-dev -y
     ```
 
 2. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/banking-system.git
+    git clone https://github.com/priyanka1144/Banking-management-system
     ```
 
 3. Navigate into the project directory:
     ```bash
-    cd banking-system
+     mousepad banking-system
     ```
 
 4. Compile the C source code using GCC:
     ```bash
-    gcc -o banking_system main.c
+    gcc -o banking_system main.c db.c utils.c -lsqlite3
     ```
 
 5. Run the banking system:
