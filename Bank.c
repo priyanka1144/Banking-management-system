@@ -520,7 +520,7 @@ int main() {
     }
 
     int loginAttempts = 0;
-    char username[20], password[20];
+    char username[100], password[100];
     
     while (loginAttempts < 3) {
         printf("\n--- Login ---\n");
@@ -532,7 +532,7 @@ int main() {
         fgets(password, sizeof(password), stdin);
         password[strcspn(password, "\n")] = '\0';
 
-        if (strcmp(username, "priyanka") == 0 && strcmp(password, "priyanka123") == 0) {
+        if (strcmp(username, "priyanka12$") == 0 && strcmp(password, "Priyanka12$$") == 0) {
             printf("Login successful!\n");
             bankingMenu();
             break;
