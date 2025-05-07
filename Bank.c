@@ -537,7 +537,7 @@ int main() {
             bankingMenu();
             break;
         } else {
-            printf("Invalid credentials. Attempts left: %d\n", 2 - loginAttempts);
+            printf("Invalid credentials ! Attempts left: %d\n", 2 - loginAttempts);
             loginAttempts++;
         }
     }
