@@ -523,7 +523,7 @@ int main() {
     char username[100], password[100];
     
     while (loginAttempts < 3) {
-        printf("\n--- Login ---\n");
+        printf("\n-------  Login  ------\n");
         printf("Username: ");
         fgets(username, sizeof(username), stdin);
         username[strcspn(username, "\n")] = '\0';
