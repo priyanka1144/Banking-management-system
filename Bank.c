@@ -523,7 +523,7 @@ int main() {
     char username[100], password[100];
     
     while (loginAttempts < 3) {
-        printf("\n--- Login ---\n");
+        printf("\n-------  Login  ------\n");
         printf("Username: ");
         fgets(username, sizeof(username), stdin);
         username[strcspn(username, "\n")] = '\0';
@@ -537,7 +537,7 @@ int main() {
             bankingMenu();
             break;
         } else {
-            printf("Invalid credentials. Attempts left: %d\n", 2 - loginAttempts);
+            printf("Invalid credentials ! Attempts left: %d\n", 2 - loginAttempts);
             loginAttempts++;
         }
     }
