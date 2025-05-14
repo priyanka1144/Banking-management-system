@@ -15,13 +15,16 @@ int initializeDatabase() {
     char *errMsg = 0;
 
     const char *sqlCreateAccounts = 
-        "CREATE TABLE IF NOT EXISTS Accounts ("
-        "accountNumber INTEGER PRIMARY KEY,"
-        "name TEXT NOT NULL,"
-        "address TEXT NOT NULL,"
-        "nid TEXT UNIQUE NOT NULL,"
-        "dob TEXT NOT NULL,"
-        "balance REAL NOT NULL);";
+    "CREATE TABLE IF NOT EXISTS Accounts ("
+    "accountNumber INTEGER PRIMARY KEY,"
+    "name TEXT NOT NULL,"
+    "fatherName TEXT NOT NULL,"
+    "motherName TEXT NOT NULL,"
+    "phone TEXT NOT NULL,"
+    "address TEXT NOT NULL,"
+    "nid TEXT UNIQUE NOT NULL,"
+    "dob TEXT NOT NULL,"
+    "balance REAL NOT NULL);";
 
     const char *sqlCreateTransactions = 
         "CREATE TABLE IF NOT EXISTS Transactions ("
@@ -169,6 +172,31 @@ void getNIDInput(char *input, int maxLength) {
         printf("NID must be exactly 10 digits.\n");
     }
 }
+void getPhoneInput(char *input, int maxLength) {
+    while (1) {
+        printf("Enter phone number (11 digits, starts with 01): ");
+        fgets(input, maxLength, stdin);
+        input[strcspn(input, "\n")] = '\0';
+
+        if (strlen(input) != 11) {
+            printf("Phone number must be exactly 11 digits.\n");
+            continue;
+        }
+
+        if (input[0] != '0' || input[1] != '1') {
+            printf("Phone number must start with '01'.\n");
+            continue;
+        }
+
+        if (!isInteger(input)) {
+            printf("Phone number must contain digits only.\n");
+            continue;
+        }
+
+        break;
+    }
+}
+
 
 void addAuditLog(const char *action, unsigned long long accountNumber) {
     sqlite3_stmt *stmt;
@@ -184,26 +212,34 @@ void addAuditLog(const char *action, unsigned long long accountNumber) {
 
 
 void createAccount() {
-    char name[50], address[100], nid[20], dob[20], balanceStr[20];
+    char name[50], fatherName[50], motherName[50], phone[15];
+    char address[100], nid[20], dob[20], balanceStr[20];
     float balance;
 
+
     getAlphabeticWithSpacesInput("Enter name: ", name, 50);
+    getAlphabeticWithSpacesInput("Enter father's name: ", fatherName, 50);
+    getAlphabeticWithSpacesInput("Enter mother's name: ", motherName, 50);
+    getPhoneInput(phone, 15);
     getAlphabeticWithSpacesInput("Enter address: ", address, 100);
     getNIDInput(nid, 20);
     getDOBInput(dob, 20);
     getFloatInput("Enter initial balance: ", balanceStr, 20);
-    balance = atof(balanceStr);
+
 
     sqlite3_stmt *stmt;
-    const char *sql = "INSERT INTO Accounts (name, address, nid, dob, balance) "
-                     "VALUES (?, ?, ?, ?, ?);";
-
+    const char *sql = "INSERT INTO Accounts (name, fatherName, motherName, phone, address, nid, dob, balance) "
+                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
         sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 2, address, -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 3, nid, -1, SQLITE_STATIC);
-        sqlite3_bind_text(stmt, 4, dob, -1, SQLITE_STATIC);
-        sqlite3_bind_double(stmt, 5, balance);
+        sqlite3_bind_text(stmt, 2, fatherName, -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 3, motherName, -1, SQLITE_STATIC);
+       sqlite3_bind_text(stmt, 4, phone, -1, SQLITE_STATIC);
+       sqlite3_bind_text(stmt, 5, address, -1, SQLITE_STATIC);
+       sqlite3_bind_text(stmt, 6, nid, -1, SQLITE_STATIC);
+       sqlite3_bind_text(stmt, 7, dob, -1, SQLITE_STATIC);
+       sqlite3_bind_double(stmt, 8, balance);
+
 
         if (sqlite3_step(stmt) == SQLITE_DONE) {
             printf("Account created successfully. Account Number: %lld\n", sqlite3_last_insert_rowid(db));
