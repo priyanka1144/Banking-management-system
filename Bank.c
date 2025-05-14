@@ -286,6 +286,47 @@ void updateAccount() {
             sqlite3_finalize(stmt);
         }
     }
+        char fatherName[50], motherName[50], phone[15];
+
+    printf("Update father's name? (y/n): ");
+    if (getchar() == 'y') {
+        while (getchar() != '\n');
+        getAlphabeticWithSpacesInput("New father's name: ", fatherName, 50);
+        const char *sql = "UPDATE Accounts SET fatherName = ? WHERE accountNumber = ?;";
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, fatherName, -1, SQLITE_STATIC);
+            sqlite3_bind_int64(stmt, 2, accountNumber);
+            sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+        }
+    }
+
+    printf("Update mother's name? (y/n): ");
+    if (getchar() == 'y') {
+        while (getchar() != '\n');
+        getAlphabeticWithSpacesInput("New mother's name: ", motherName, 50);
+        const char *sql = "UPDATE Accounts SET motherName = ? WHERE accountNumber = ?;";
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, motherName, -1, SQLITE_STATIC);
+            sqlite3_bind_int64(stmt, 2, accountNumber);
+            sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+        }
+    }
+
+    printf("Update phone number? (y/n): ");
+    if (getchar() == 'y') {
+        while (getchar() != '\n');
+        getPhoneInput(phone, 15);
+        const char *sql = "UPDATE Accounts SET phone = ? WHERE accountNumber = ?;";
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, 0) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, phone, -1, SQLITE_STATIC);
+            sqlite3_bind_int64(stmt, 2, accountNumber);
+            sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+        }
+    }
+
 
     printf("Update address? (y/n): ");
     if (getchar() == 'y') {
